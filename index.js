@@ -1,60 +1,43 @@
-//file: index.js
-const rp = require("request-promise");
-const cheerio = require("cheerio");
-const fs = require("fs");
+const cheerio = require('cheerio');
+const fs = require('fs');
+const request = require('request-promise');
+const url = "https://docsachhay.net/sach/dam-that-bai-3545";
 
-const URL = `https://docsachhay.net/`;
+const books = [];
+const arr = [];
+const book = { name: "", author: "", category: "", description: "", chapter: arr }
+request(url, (error, response, html) => {
 
-const options = {
-    uri: URL,
-    transform: function(body) {
-        //Khi lấy dữ liệu từ trang thành công nó sẽ tự động parse DOM
-        return cheerio.load(body);
-    },
-};
+    if (!error && response.statusCode == 200) {
+        const $ = cheerio.load(html);
 
-(async function crawler() {
-    try {
-        // Lấy dữ liệu từ trang crawl đã được parseDOM
-        var $ = await rp(options);
-    } catch (error) {
-        return error;
-    }
+        // $('.fixed-img').each((index, el) => {
+        //     const img = $(el).find('.cover img').img;
+        //     console.log(img);
+        // });
 
-    /* Lấy tên và miêu tả của tutorial*/
-    const title = $(".novel-list").text().trim();
-    console.log(title);
-    const description = $(".entry-content > p").text().trim();
-
-    /* Phân tích các table và sau đó lấy các posts.
-       Mỗi table là một chương 
-    */
-    const tableContent = $(".entry-content table");
-    let data = [];
-    for (let i = 0; i < tableContent.length; i++) {
-        let chaper = $(tableContent[i]);
-        // Tên của chương đó.
-        let chaperTitle = chaper.find("thead").text().trim();
-
-
-        //Tìm bài viết ở mỗi chương
-        let chaperData = []
-        const chaperLink = chaper.find("tbody").find("a");
-        for (let j = 0; j < chaperLink.length; j++) {
-            const post = $(chaperLink[j]);
-            const postLink = post.attr("href");
-            const postTitle = post.text().trim();
-            chaperData.push({
-                postTitle,
-                postLink,
-            });
-        }
-        data.push({
-            chaperTitle,
-            chaperData,
+        $('.novel-info').each((index, el) => {
+            book.name = $(el).find('h1').html();
+            book.author = $(el).find('.author a span').html();
+            book.category = $(el).find('.categories ul li').text();
         });
-    }
 
-    // Lưu dữ liệu về máy
-    fs.writeFileSync('data.json', JSON.stringify(data))
-})();
+        $('#info').each((index, el) => {
+            book.description = $(el).find('.summary').html();
+        });
+
+        $('.chapter-list li').each((index, el) => {
+            const chapter_title = $(el).find('.chapter-title').html();
+            const href_chapter = $(el).find('a').attr("href");
+            arr.push({
+                chapter_title: chapter_title,
+                href_chapter: href_chapter,
+            });
+        });
+        book.chapter = arr;
+        books.push(book);
+        fs.writeFileSync('data1.json', JSON.stringify(books));
+    } else {
+        console.log(error);
+    }
+});
